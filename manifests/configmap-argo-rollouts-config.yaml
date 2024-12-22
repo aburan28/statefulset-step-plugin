@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argo-rollouts-config
+data:
+  canaryStepPlugins: |- 
+    - name: "argoproj-labs/step"
+      location: "file:///tmp/argo-rollouts/step-plugin"
+      args:
+        - "--log-level"
+        - "debug"
