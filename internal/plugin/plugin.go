@@ -13,6 +13,8 @@ import (
 	"github.com/argoproj/argo-rollouts/utils/plugin/types"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 type Config struct {
@@ -40,6 +42,7 @@ type rpcPlugin struct {
 	lock      *sync.RWMutex
 	generator *rand.Rand
 	randomMap map[string]*Result
+	clientset *kubernetes.Clientset
 }
 
 func New(logCtx *log.Entry, seed int64) rpc.StepPlugin {
@@ -57,6 +60,19 @@ func (p *rpcPlugin) InitPlugin() types.RpcError {
 	p.LogCtx.Infof("InitPlugin with seed %d", p.Seed)
 	p.generator = rand.New(rand.NewSource(p.Seed))
 	p.randomMap = map[string]*Result{}
+
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// 2. Create a Kubernetes client set.
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+	p.clientset = clientset
+
 	return types.RpcError{}
 }
 
@@ -68,6 +84,23 @@ func (p *rpcPlugin) Run(rollout *v1alpha1.Rollout, context *types.RpcStepContext
 	// if !p.validate(rollout) {
 
 	// }
+	if rollout == nil {
+		return types.RpcStepResult{}, types.RpcError{ErrorString: "rollout is nil"}
+	}
+
+	// Get statefulset name
+	var statefulsetName string
+	if rollout.Spec.WorkloadRef == nil {
+		return types.RpcStepResult{}, types.RpcError{ErrorString: "workloadRef is nil"}
+	}
+
+	if rollout.Spec.WorkloadRef.Kind == "StatefulSet" {
+		statefulsetName = rollout.Spec.WorkloadRef.Name
+	} else {
+		return types.RpcStepResult{}, types.RpcError{ErrorString: "workloadRef is not a StatefulSet"}
+	}
+
+	log.Info(statefulsetName)
 
 	// Get configs
 	var config Config

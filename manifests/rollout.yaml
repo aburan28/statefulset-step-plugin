@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: example-rollout-canary
+spec:
+  replicas: 5
+  analysis:
+    successfulRunHistoryLimit: 10
+    unsuccessfulRunHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: guestbook
+
+  # WorkloadRef holds a references to a workload that provides Pod template 
+  # (e.g. Deployment). If used, then do not use Rollout template property.
+  workloadRef: 
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: ststest
